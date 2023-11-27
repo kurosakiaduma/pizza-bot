@@ -1,7 +1,7 @@
+import asyncio
 from flask import Flask, request, Response
 from botbuilder.schema import Activity
 from botbuilder.core import BotFrameworkAdapter, BotFrameworkAdapterSettings
-import asyncio
 
 from pchatbot import PizzaChatBot
 
@@ -30,8 +30,6 @@ def messages():
 
     return "", 201
 
-        
-    task = loop.create_task(botadapter.process_activity(activity,"",turn_call))
-    loop.run_until_complete(task)
 if __name__ == "__main__":
     app.run('localhost', 3978)
+    
