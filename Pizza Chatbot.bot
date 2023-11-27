@@ -1,0 +1,18 @@
+{
+    "name": "Pizza Chatbot",
+    "description": "",
+    "services": [
+        {
+            "type": "endpoint",
+            "name": "http://localhost:3978/api/messages",
+            "id": "6b9ba500-8cd1-11ee-aff3-0b69cbecd340",
+            "appId": "",
+            "appPassword": "",
+            "endpoint": "http://localhost:3978/api/messages"
+        }
+    ],
+    "padlock": "",
+    "version": "2.0",
+    "path": "C:\\Users\\Tevin\\Documents\\Computer Science\\Artifical Intelligence Programming\\BotMaker_Pizza\\Bot\\Pizza Chatbot.bot",
+    "overrides": null
+}
