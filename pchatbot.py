@@ -2,7 +2,7 @@ import asyncio
 import random
 from pathlib import Path
 from botbuilder.core import TurnContext, MessageFactory, CardFactory
-from botbuilder.schema import ActivityTypes, ActionTypes,CardImage, HeroCard, CardAction
+from botbuilder.schema import ActivityTypes, ActionTypes, Attachment, CardAction, CardImage, Fact, HeroCard,  ReceiptCard, ReceiptItem
 
 
 
@@ -26,7 +26,7 @@ class PizzaChatBot:
             "Extra cheese": {"price": 2.00, "image": "extra_cheese_image_url"},
         }
         self.order = {
-            "pizza": [],
+            "pizza": "",
             "toppings": [],
         }
         self.user_name = None
@@ -61,20 +61,23 @@ class PizzaChatBot:
                 # Handle non-order-related messages
                 await self.handle_non_order(turn_context, user_message)
 
-    async def handle_order(self, turn_context, user_message):
-        if user_message == "ViewMenu":
+    async def handle_order(self, turn_context: TurnContext, user_message):
+        if user_message == "StartOrder":
+            await self.display_menu(turn_context, "Pizza Menu", self.menu, True)
+        elif user_message == "ViewMenu":
             await self.view_menu(turn_context)
         elif user_message in self.menu:
             await self.add_pizza_to_order(turn_context, user_message)
-        elif user_message == "StartOrder":
-            # Begin order placement logic
-            self.placing_order = True
-            await self.display_menu(turn_context, "Pizza Menu", self.menu, True)
-        elif user_message.lower() in ["small", "medium", "large"]:
-            await self.confirm_size(turn_context, user_message.lower())
+        elif user_message in ["Small", "Medium", "Large"]:
+            await self.confirm_size(turn_context, user_message)
+        elif user_message in self.toppings:
+            if len(self.order["toppings"]) < 4:
+                await self.customize_pizza(turn_context, self.order["pizza"][0], user_message=user_message)
+        elif user_message == "CompleteOrder":
+            await self.complete_order(turn_context)
         else:
             await turn_context.send_activity(
-                "Sorry, I didn't understand that. You can continue customizing your order or place the order."
+                f"{self.order} Sorry, I didn't understand that. You can continue customizing your order or place the order."
             )
 
     async def handle_non_order(self, turn_context, user_message):
@@ -173,7 +176,7 @@ class PizzaChatBot:
         await turn_context.send_activity(carousel)
 
     async def add_pizza_to_order(self, turn_context, pizza_name):
-        self.order["pizza"] = [{"name": pizza_name}]
+        self.order["pizza"] = pizza_name
         await self.select_pizza_size(turn_context, pizza_name)
 
     async def select_pizza_size(self, turn_context, pizza_name):
@@ -194,59 +197,62 @@ class PizzaChatBot:
         await turn_context.send_activity(MessageFactory.attachment(size_selection_card))
         
     async def confirm_size(self, turn_context:TurnContext, user_message:str) -> None:
-        pizza_name = self.order["pizza"][0]['name']
-        if (user_message).lower() in ["small", "medium", "large"]:
-            pizza_details = {"name": pizza_name, "size": user_message, "toppings": []}
-            self.order["pizza"][0].update(pizza_details)
+        pizza_name = self.order["pizza"]
+        if (user_message) in ["Small", "Medium", "Large"]:
+            pizza_details = {"pizza": pizza_name, "size": user_message, "toppings": []}
+            self.order.update(pizza_details)
             await self.customize_pizza(turn_context, pizza_details)
         else:
             await turn_context.send_activity("Invalid size selection.")
             await self.select_pizza_size(turn_context, pizza_name)  # Retry size selection
 
-    async def customize_pizza(self, turn_context, pizza_details):
-        await self.display_menu(turn_context, "Toppings Menu", self.toppings, show_buttons=True)
-        choose_toppings =  True
-        # Wait for user to select toppings
-        selected_toppings = []
-        while choose_toppings:
-            response = (await turn_context.receive_activity()).text
-            if response.lower() in self.toppings and len(selected_toppings) < 4:
-                selected_toppings.append(response)
-                await turn_context.send_activity(
-                    MessageFactory.attachment(
-                        CardFactory.hero_card(
-                            HeroCard(
-                                title=f"{response} added to your {pizza_details['size']} {pizza_details['name']}."
+    async def customize_pizza(self, turn_context: TurnContext, pizza_details, user_message = None):
+        if user_message:
+            # Wait for user to select toppings
+            selected_toppings = []
+            selected_toppings.extend(self.order["toppings"])
+            choose_toppings = True if len(selected_toppings) < 3 else False
+            if choose_toppings:
+                response = user_message
+                if response in self.toppings:
+                    selected_toppings.append(response)
+                    await turn_context.send_activity(
+                        MessageFactory.attachment(
+                            CardFactory.hero_card(
+                                HeroCard(
+                                    title=f"{response} added to your {pizza_details['size']} {pizza_details['name']}."
+                                )
                             )
                         )
                     )
-                )
-            elif len(selected_toppings) == 3:
-                choose_toppings = False
-            else:
-                await turn_context.send_activity(
-                    MessageFactory.attachment(
-                        CardFactory.hero_card(
-                            HeroCard(
-                                title="Sorry, I didn't understand that. Please select a topping from the menu."
+                else:
+                    await turn_context.send_activity(
+                        MessageFactory.attachment(
+                            CardFactory.hero_card(
+                                HeroCard(
+                                    title="Sorry, I didn't understand that. Please select a topping from the menu."
+                                )
                             )
                         )
                     )
-                )
-                await self.display_menu(turn_context, "Toppings Menu", self.toppings, show_buttons=True)
-
-        pizza_details["toppings"] = selected_toppings
-        self.order["pizza"][0].update(pizza_details)
-        await turn_context.send_activity(
-            MessageFactory.attachment(
-                CardFactory.hero_card(
-                    HeroCard(
-                        title=f"Custom {pizza_details['size']} {pizza_details['name']} added to your order."
+        else:
+            await self.display_menu(turn_context, "Toppings Menu", self.toppings, show_buttons=True)
+             # Send the "Complete your order" button as a separate activity
+            complete_order_card = HeroCard(
+                title="Complete your order",
+                buttons=[
+                    CardAction(
+                        type=ActionTypes.im_back,
+                        title="Complete your order",
+                        value="CompleteOrder"
                     )
-                )
+                ]
             )
-        )
-        await self.complete_order(turn_context)
+            await turn_context.send_activity(MessageFactory.attachment(CardFactory.hero_card(complete_order_card)))
+            
+        self.order["toppings"] = selected_toppings
+
+        await self.display_menu(turn_context, "Toppings Menu", self.toppings, show_buttons=True)
 
     async def complete_order(self, turn_context):
         await self.calculate_total(turn_context)
@@ -265,21 +271,40 @@ class PizzaChatBot:
 
         await turn_context.send_activity("Thank you for ordering from Pizza Paradise!")
 
-    async def calculate_total(self, turn_context):
+    async def calculate_total(self, turn_context: TurnContext):
+        await turn_context.send_activity(f"Your order items=>{self.order}", "Here is your order")
         total_cost = 0
-        for pizza_details in self.order["pizza"]:
-            pizza_cost = self.menu[pizza_details["name"]]["price"]
-            toppings_cost = sum(self.toppings[topping]["price"] for topping in pizza_details["toppings"])
-            total_cost += pizza_cost + toppings_cost
+        receipt_items = []
+        pizza_cost = self.menu[self.order["pizza"]]["price"]
+        pizza_cost = pizza_cost * .75 if self.order["size"] == "Small" else pizza_cost * 1.25 if self.order["Large"] else pizza_cost  
+        toppings_cost = sum(self.toppings[topping]["price"] for topping in self.order["toppings"])
+        total_cost += pizza_cost + toppings_cost
 
-        total_cost_card = CardFactory.hero_card(
-            HeroCard(
-                title="Total Order Cost",
-                text=f"Your total order cost is: ${total_cost}",
-                images=[CardImage(url="bot_logo_image_url")]
+        # Add a receipt item for each pizza
+        receipt_items.append(
+            ReceiptItem(
+                title=f"{self.order['size']} {self.order['pizza']}",
+                price=f"${pizza_cost + toppings_cost}",
+                quantity="1",
+                image=CardImage(url=f"{(self.menu.get(self.order.get('pizza'))).get('image')}")  
             )
         )
-        await turn_context.send_activity(MessageFactory.attachment(total_cost_card))
+
+        receipt_card = ReceiptCard(
+            title="Total Order Cost",
+            facts=[Fact(key="Order Number", value="1234567890")],  # replace with actual order number
+            items=receipt_items,
+            total=f"${total_cost}",
+            buttons=[
+                CardAction(
+                    type=ActionTypes.im_back,
+                    title="Confirm Order",
+                    value="Confirm Order"
+                )
+            ]
+        )
+        receipt_attachment = Attachment(content_type="application/vnd.microsoft.card.receipt", content=receipt_card)
+        await turn_context.send_activity(MessageFactory.attachment(receipt_attachment))
 
     async def countdown(self, turn_context, wait_time):
         while wait_time > 0:
