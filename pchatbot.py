@@ -207,27 +207,26 @@ class PizzaChatBot:
             choose_toppings = True if len(selected_toppings) < 3 else False
             if choose_toppings:
                 response = user_message
-                if response in self.toppings:
-                    selected_toppings.append(response)
-                    await turn_context.send_activity(
-                        MessageFactory.attachment(
-                            CardFactory.hero_card(
-                                HeroCard(
-                                    title=f"{response} added to your {pizza_details['size']} {pizza_details['name']}."
-                                )
+                selected_toppings.append(response)
+                await turn_context.send_activity(
+                    MessageFactory.attachment(
+                        CardFactory.hero_card(
+                        HeroCard(
+                                title=f"{response} added to your {pizza_details['size']} {pizza_details['pizza']}."
                             )
                         )
                     )
-                else:
-                    await turn_context.send_activity(
-                        MessageFactory.attachment(
-                            CardFactory.hero_card(
-                                HeroCard(
-                                    title="Sorry, I didn't understand that. Please select a topping from the menu."
-                                )
+                )
+            else:
+                await turn_context.send_activity(
+                    MessageFactory.attachment(
+                        CardFactory.hero_card(
+                            HeroCard(
+                                title="Sorry, I didn't understand that. Please select a topping from the menu."
                             )
                         )
                     )
+                )
         else:
             await self.display_menu(turn_context, "Toppings Menu", self.toppings, show_buttons=True)
              # Send the "Complete your order" button as a separate activity
@@ -265,7 +264,7 @@ class PizzaChatBot:
         total_cost = 0
         receipt_items = []
         pizza_cost = self.menu[self.order["pizza"]]["price"]
-        pizza_cost = pizza_cost * .75 if self.order["size"] == "Small" else pizza_cost * 1.25 if self.order["Large"] else pizza_cost  
+        pizza_cost = pizza_cost * .75 if self.order["size"] == "Small" else pizza_cost * 1.25 if self.order["size"] == "Large" else pizza_cost  
         toppings_cost = sum(self.toppings[topping]["price"] for topping in self.order["toppings"])
         total_cost += pizza_cost + toppings_cost
 
