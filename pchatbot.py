@@ -16,7 +16,6 @@ class PizzaChatBot:
             "Vegetarian": {"price": 11.99, "image": Path(r"C:\Users\Tevin\Documents\Computer Science\Artifical Intelligence Programming\BotMaker_Pizza\Bot\imgs\vegetarian.webp")},
             "Hawaiian": {"price": 13.99, "image": Path(r"C:\Users\Tevin\Documents\Computer Science\Artifical Intelligence Programming\BotMaker_Pizza\Bot\imgs\hawaiian.jpeg")},
             "BBQ Chicken": {"price": 14.99, "image": Path(r"C:\Users\Tevin\Documents\Computer Science\Artifical Intelligence Programming\BotMaker_Pizza\Bot\imgs\bbchicken.jpg")},
-            "Custom": {"price": 14.99, "image": "custom_image_url"},
         }
         self.toppings = {
             "Mushrooms": {"price": 1.50, "image": "mushrooms_image_url"},
@@ -72,7 +71,7 @@ class PizzaChatBot:
             await self.confirm_size(turn_context, user_message)
         elif user_message in self.toppings:
             if len(self.order["toppings"]) < 4:
-                await self.customize_pizza(turn_context, self.order["pizza"][0], user_message=user_message)
+                await self.select_topping(turn_context, self.order, user_message=user_message)
         elif user_message == "CompleteOrder":
             await self.complete_order(turn_context)
         else:
@@ -181,14 +180,14 @@ class PizzaChatBot:
 
     async def select_pizza_size(self, turn_context, pizza_name):
         size_buttons = [
-            CardAction(type=ActionTypes.im_back, title="Small", value="Small"),
-            CardAction(type=ActionTypes.im_back, title="Medium", value="Medium"),
-            CardAction(type=ActionTypes.im_back, title="Large", value="Large"),
+            CardAction(type=ActionTypes.im_back, title="Small", value="Small", display_text="25% off the normal price"),
+            CardAction(type=ActionTypes.im_back, title="Medium", value="Medium", display_text="Sold as per retail price"),
+            CardAction(type=ActionTypes.im_back, title="Large", value="Large", display_text="25% above the normal price"),
         ]
 
         size_selection_card = CardFactory.hero_card(
             HeroCard(
-                title=f"Select size for {pizza_name}",
+                title=f"Select size for your {pizza_name} pizza",
                 buttons=size_buttons,
                 images=[CardImage(url=self.menu[pizza_name]['image'])],
             )
@@ -196,17 +195,11 @@ class PizzaChatBot:
 
         await turn_context.send_activity(MessageFactory.attachment(size_selection_card))
         
-    async def confirm_size(self, turn_context:TurnContext, user_message:str) -> None:
-        pizza_name = self.order["pizza"]
-        if (user_message) in ["Small", "Medium", "Large"]:
-            pizza_details = {"pizza": pizza_name, "size": user_message, "toppings": []}
-            self.order.update(pizza_details)
-            await self.customize_pizza(turn_context, pizza_details)
-        else:
-            await turn_context.send_activity("Invalid size selection.")
-            await self.select_pizza_size(turn_context, pizza_name)  # Retry size selection
-
-    async def customize_pizza(self, turn_context: TurnContext, pizza_details, user_message = None):
+    async def confirm_size(self, turn_context:TurnContext, user_message = None) -> None:
+        self.order.update({"size": user_message})
+        await self.select_topping(turn_context, self.order)
+        
+    async def select_topping(self, turn_context: TurnContext, pizza_details: dict, user_message = None) -> None:
         if user_message:
             # Wait for user to select toppings
             selected_toppings = []
@@ -249,10 +242,6 @@ class PizzaChatBot:
                 ]
             )
             await turn_context.send_activity(MessageFactory.attachment(CardFactory.hero_card(complete_order_card)))
-            
-        self.order["toppings"] = selected_toppings
-
-        await self.display_menu(turn_context, "Toppings Menu", self.toppings, show_buttons=True)
 
     async def complete_order(self, turn_context):
         await self.calculate_total(turn_context)
