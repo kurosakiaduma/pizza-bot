@@ -25,8 +25,7 @@ def messages():
     async def turn_call(turn_context):
         await pizza_bot.on_turn(turn_context)
         
-    task = loop.create_task(botadapter.process_activity(activity,"",turn_call))
-    loop.run_until_complete(task)
+    asyncio.run(botadapter.process_activity(activity, "", turn_call))
 
     return "", 201
 
