@@ -10,6 +10,7 @@ class PizzaChatBot:
     def __init__(self):
         self.existing_customers = {}
         self.returning_customers = {}
+        self.orders = {}
         self.menu = {
             "Margherita": {"price": 10.99, "image": Path(r"C:\Users\Tevin\Documents\Computer Science\Artifical Intelligence Programming\BotMaker_Pizza\Bot\imgs\margherita.webp")},
             "Pepperoni": {"price": 12.99, "image": Path(r"C:\Users\Tevin\Documents\Computer Science\Artifical Intelligence Programming\BotMaker_Pizza\Bot\imgs\pepperoni.webp")},
@@ -26,10 +27,11 @@ class PizzaChatBot:
         }
         self.order = {
             "pizza": "",
+            "size": "",
             "toppings": set(),
         }
         self.user_name = None
-        self.wait_time = random.randint(20, 50)
+        self.wait_time = random.randint(10, 20)
         self.counter_number = random.randint(1, 10)
         self.placing_order = False  # flag to track the order placement status
 
@@ -104,8 +106,8 @@ class PizzaChatBot:
     async def send_initial_prompt_card(self, turn_context):
         initial_prompt_card = CardFactory.hero_card(
             HeroCard(
-                title=f"Welcome, {self.user_name}!",
-                text="Thank you for visiting Pizza Pizzeria!",
+                title=f"Hi, {self.user_name}!",
+                text="Welcome to Pizza Paradise!",
                 images=[CardImage(url="bot_logo_image_url")],
                 buttons=[
                     CardAction(
@@ -279,9 +281,18 @@ class PizzaChatBot:
         await self.notify_order_ready(turn_context, counter_number)
 
         # Reset placing_order flag after completing the order
+        # Update the orders dict
+        # Clear the order dict
         self.placing_order = False
-
-        await turn_context.send_activity("Thank you for ordering from Pizza Paradise!")
+        self.orders.update(self.order)
+        self.order.update({
+            "pizza": "",
+            "size": "",
+            "toppings": set(),
+        })
+        
+        # Display initial menu
+        await self.send_initial_prompt_card(turn_context)
 
     async def calculate_total(self, turn_context: TurnContext):
         await turn_context.send_activity(f"Your order items=>{self.order}", "Here is your order")
@@ -315,14 +326,14 @@ class PizzaChatBot:
     async def countdown(self, turn_context, wait_time):
         while wait_time > 0:
             await turn_context.send_activity(f"Waiting time remaining: {wait_time} seconds.")
-            await asyncio.sleep(1)  # Introduce a 1-second delay without blocking the event loop
+            await asyncio.sleep(1)
             wait_time -= 1
 
     async def notify_order_ready(self, turn_context, counter_number):
         order_ready_card = CardFactory.hero_card(
             HeroCard(
                 title="Order Ready!",
-                text=f"Your order is ready for pickup at Counter No. {counter_number}. Enjoy your pizza!",
+                text=f"Your order is ready for pickup at Counter No. {counter_number}.\nThanks for ordering from Pizza Paradise 🙂\nEnjoy your pizza!",
                 images=[CardImage(url="bot_logo_image_url")]
             )
         )
