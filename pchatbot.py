@@ -205,8 +205,7 @@ class PizzaChatBot:
         # Wait for user to select toppings
         selected_toppings = []
         selected_toppings.extend(self.order["toppings"])
-        choose_toppings = True if len(selected_toppings) < 3 else False
-        if choose_toppings:
+        if choose_toppings := True if len(selected_toppings) < 3 else False:
             if user_message:
                 response = user_message
                 if response not in selected_toppings:
