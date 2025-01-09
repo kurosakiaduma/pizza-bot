@@ -1,8 +1,8 @@
 import asyncio
-import random
 from pathlib import Path
 from botbuilder.core import TurnContext, MessageFactory, CardFactory
 from botbuilder.schema import ActivityTypes, ActionTypes, Attachment, CardAction, CardImage, Fact, HeroCard,  ReceiptCard, ReceiptItem
+import secrets
 
 
 
@@ -31,8 +31,8 @@ class PizzaChatBot:
             "toppings": set(),
         }
         self.user_name = None
-        self.wait_time = random.randint(10, 20)
-        self.counter_number = random.randint(1, 10)
+        self.wait_time = secrets.SystemRandom().randint(10, 20)
+        self.counter_number = secrets.SystemRandom().randint(1, 10)
         self.placing_order = False  # flag to track the order placement status
 
     async def on_turn(self, turn_context: TurnContext):
@@ -272,7 +272,7 @@ class PizzaChatBot:
         countdown_task = asyncio.create_task(self.countdown(turn_context, self.wait_time))
 
         # Provide counter number for pickup
-        counter_number = random.randint(1, 10)  # Random counter number between 1 and 10
+        counter_number = secrets.SystemRandom().randint(1, 10)  # Random counter number between 1 and 10
 
         # Wait for the countdown to finish
         await countdown_task
